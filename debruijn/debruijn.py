@@ -16,6 +16,8 @@
 import argparse
 import os
 import sys
+import networkx as nx
+
 from pathlib import Path
 from networkx import (
     DiGraph,
@@ -39,13 +41,13 @@ from typing import Iterator, Dict, List
 
 matplotlib.use("Agg")
 
-__author__ = "Your Name"
-__copyright__ = "Universite Paris Diderot"
-__credits__ = ["Your Name"]
+__author__ = "Yves Yamadjako"
+__copyright__ = "Universite Paris Cité"
+__credits__ = ["Yves Yamadjako"]
 __license__ = "GPL"
 __version__ = "1.0.0"
-__maintainer__ = "Your Name"
-__email__ = "your@email.fr"
+__maintainer__ = "Yves Yamadjako"
+__email__ = "bonou-yves.yamadjako@etu.u-paris.fr"
 __status__ = "Developpement"
 
 
@@ -95,14 +97,21 @@ def get_arguments():  # pragma: no cover
     )
     return parser.parse_args()
 
-
 def read_fastq(fastq_file: Path) -> Iterator[str]:
     """Extract reads from fastq files.
 
     :param fastq_file: (Path) Path to the fastq file.
     :return: A generator object that iterate the read sequences.
     """
-    pass
+    with open(fastq_file, "r") as file:
+        while True:
+            identifier = file.readline().strip()
+            if not identifier:
+                break  # Fin du fichier
+            sequence = file.readline().strip()
+            file.readline()  # Ligne de description
+            file.readline()  # Ligne de qualité
+            yield sequence
 
 
 def cut_kmer(read: str, kmer_size: int) -> Iterator[str]:
@@ -111,7 +120,8 @@ def cut_kmer(read: str, kmer_size: int) -> Iterator[str]:
     :param read: (str) Sequence of a read.
     :return: A generator object that provides the kmers (str) of size kmer_size.
     """
-    pass
+    for i in range(len(read) - kmer_size + 1):
+        yield read[i:i + kmer_size]
 
 
 def build_kmer_dict(fastq_file: Path, kmer_size: int) -> Dict[str, int]:
@@ -120,7 +130,14 @@ def build_kmer_dict(fastq_file: Path, kmer_size: int) -> Dict[str, int]:
     :param fastq_file: (str) Path to the fastq file.
     :return: A dictionnary object that identify all kmer occurrences.
     """
-    pass
+    kmer_dict = {}
+    for read in read_fastq(fastq_file):
+        for kmer in cut_kmer(read, kmer_size):
+            if kmer in kmer_dict:
+                kmer_dict[kmer] += 1
+            else:
+                kmer_dict[kmer] = 1
+    return kmer_dict
 
 
 def build_graph(kmer_dict: Dict[str, int]) -> DiGraph:
@@ -129,7 +146,14 @@ def build_graph(kmer_dict: Dict[str, int]) -> DiGraph:
     :param kmer_dict: A dictionnary object that identify all kmer occurrences.
     :return: A directed graph (nx) of all kmer substring and weight (occurrence).
     """
-    pass
+    graph = nx.DiGraph()  # Création d'un graphe orienté
+    
+    for kmer, weight in kmer_dict.items():
+        prefix = kmer[:-1]  # Préfixe : tous les caractères sauf le dernier
+        suffix = kmer[1:]   # Suffixe : tous les caractères sauf le premier
+        graph.add_edge(prefix, suffix, weight=weight)  # Ajout de l'arête avec le poids
+        
+    return graph
 
 
 def remove_paths(
@@ -147,7 +171,21 @@ def remove_paths(
     :param delete_sink_node: (boolean) True->We remove the last node of a path
     :return: (nx.DiGraph) A directed graph object
     """
-    pass
+    for path in path_list:
+        # Supprimer les nœuds intermédiaires
+        nodes_to_remove = path[:]
+        
+        # ne pas supprimer le nœud d'entrée
+        if not delete_entry_node:
+            nodes_to_remove = nodes_to_remove[1:]
+        
+        if not delete_sink_node:
+            nodes_to_remove = nodes_to_remove[:-1]
+        
+        # Supprimer les nœuds du graphe
+        graph.remove_nodes_from(nodes_to_remove)
+        
+    return graph
 
 
 def select_best_path(
@@ -168,7 +206,16 @@ def select_best_path(
     :param delete_sink_node: (boolean) True->We remove the last node of a path
     :return: (nx.DiGraph) A directed graph object
     """
-    pass
+    # Trouver l'indice du chemin ayant la longueur la plus grande et le poids moyen le plus élevé
+    max_length_index = max(range(len(path_list)), key=lambda i: (path_length[i], weight_avg_list[i]))
+    
+    # Sélectionner tous les autres chemins à supprimer sauf le meilleur
+    paths_to_remove = [path_list[i] for i in range(len(path_list)) if i != max_length_index]
+    
+    # Supprimer les chemins non choisis
+    graph = remove_paths(graph, paths_to_remove, delete_entry_node, delete_sink_node)
+    
+    return graph
 
 
 def path_average_weight(graph: DiGraph, path: List[str]) -> float:
