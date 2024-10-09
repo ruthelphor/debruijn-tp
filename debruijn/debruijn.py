@@ -13,12 +13,19 @@
 
 """Perform assembly based on debruijn graph."""
 
+# Importations des bibliothèques standard
 import argparse
 import os
 import sys
-import networkx as nx
-
+import random
+import statistics
+import textwrap
 from pathlib import Path
+from operator import itemgetter
+from typing import Iterator, Dict, List
+
+# Importations des bibliothèques tierces
+import networkx as nx
 from networkx import (
     DiGraph,
     all_simple_paths,
@@ -28,18 +35,16 @@ from networkx import (
     draw,
     spring_layout,
 )
+
 import matplotlib
-from operator import itemgetter
-import random
-
-random.seed(9001)
-from random import randint
-import statistics
-import textwrap
 import matplotlib.pyplot as plt
-from typing import Iterator, Dict, List
 
+# Configuration de matplotlib
 matplotlib.use("Agg")
+
+# Initialisation du générateur de nombres aléatoires
+random.seed(9001)
+
 
 __author__ = "Yves Yamadjako"
 __copyright__ = "Universite Paris Cité"
@@ -147,12 +152,10 @@ def build_graph(kmer_dict: Dict[str, int]) -> DiGraph:
     :return: A directed graph (nx) of all kmer substring and weight (occurrence).
     """
     graph = nx.DiGraph()  # Création d'un graphe orienté
-    
     for kmer, weight in kmer_dict.items():
         prefix = kmer[:-1]  # Préfixe : tous les caractères sauf le dernier
         suffix = kmer[1:]   # Suffixe : tous les caractères sauf le premier
-        graph.add_edge(prefix, suffix, weight=weight)  # Ajout de l'arête avec le poids
-        
+        graph.add_edge(prefix, suffix, weight=weight)  # Ajout de l'arête avec le poids  
     return graph
 
 
@@ -269,23 +272,82 @@ def simplify_bubbles(graph: DiGraph) -> DiGraph:
 
 
 def solve_entry_tips(graph: DiGraph, starting_nodes: List[str]) -> DiGraph:
-    """Remove entry tips
+    """Remove entry tips from the graph.
 
     :param graph: (nx.DiGraph) A directed graph object
     :param starting_nodes: (list) A list of starting nodes
     :return: (nx.DiGraph) A directed graph object
     """
-    pass
+    for node in graph.nodes:
+        # Liste des prédécesseurs du nœud
+        predecessors = list(graph.predecessors(node))
+        # Si le nœud a plusieurs prédécesseurs, il peut y avoir une pointe d'entrée
+        if len(predecessors) > 1:
+            chemins, longueurs_chemins, poids_moyens = [], [], []
+            for noeud_depart in starting_nodes:
+                # Vérifie s'il existe un chemin entre le nœud de départ et le nœud actuel
+                if has_path(graph, noeud_depart, node):
+                    # Récupère tous les chemins simples de noeud_depart vers le nœud actuel
+                    for chemin in all_simple_paths(graph, noeud_depart, node):
+                        if len(chemin) >= 2:
+                            chemins.append(chemin)
+                            longueurs_chemins.append(len(chemin))
+                            poids_moyens.append(path_average_weight(graph, chemin))
+
+            # S'il y a plusieurs chemins valides, sélectionne le meilleur
+            if len(chemins) > 1:
+                graph = select_best_path(
+                    graph, chemins, longueurs_chemins, poids_moyens,
+                    delete_entry_node=True, delete_sink_node=False
+                )
+                # Appel récursif pour continuer à simplifier les pointes d'entrée
+                return solve_entry_tips(graph, get_starting_nodes(graph))
+
+    return graph
 
 
 def solve_out_tips(graph: DiGraph, ending_nodes: List[str]) -> DiGraph:
-    """Remove out tips
+    """Remove out tips from the graph.
 
     :param graph: (nx.DiGraph) A directed graph object
     :param ending_nodes: (list) A list of ending nodes
     :return: (nx.DiGraph) A directed graph object
     """
-    pass
+    modification_effectuee = True
+    while modification_effectuee:
+        modification_effectuee = False
+        for node in list(graph.nodes):
+            # Récupère la liste des successeurs du nœud actuel
+            successors = list(graph.successors(node))
+            # Si le nœud a plusieurs successeurs, il peut y avoir une pointe de sortie
+            if len(successors) > 1:
+                chemins, longueurs_chemins, poids_moyens = [], [], []
+                for noeud_terminaison in ending_nodes:
+                    # Vérifie s'il existe un chemin entre le nœud actuel et le noeud_terminaison
+                    if has_path(graph, node, noeud_terminaison):
+                        # Récupère tous les chemins simples de node vers noeud_terminaison
+                        for chemin in all_simple_paths(graph, node, noeud_terminaison):
+                            if len(chemin) >= 2:
+                                chemins.append(chemin)
+                                longueurs_chemins.append(len(chemin))
+                                poids_moyens.append(path_average_weight(graph, chemin))
+
+                # S'il y a plusieurs chemins valides, sélectionne le meilleur
+                if len(chemins) > 1:
+                    graph = select_best_path(
+                        graph, chemins, longueurs_chemins, poids_moyens,
+                        delete_entry_node=False, delete_sink_node=True
+                    )
+                    # Met à jour l'indicateur pour indiquer qu'une modification a été effectuée
+                    modification_effectuee = True
+                    break  # Recommencer la recherche depuis le début du graphe
+
+        # Met à jour la liste des nœuds de sortie après chaque modification
+        if modification_effectuee:
+            ending_nodes = get_sink_nodes(graph)
+
+    return graph
+
 
 
 def get_starting_nodes(graph: DiGraph) -> List[str]:
