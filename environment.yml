@@ -1,0 +1,8 @@
+name: debruijn
+channels:
+  - conda-forge
+dependencies:
+  - networkx
+  - pytest
+  - pylint
+  - matplotlib
