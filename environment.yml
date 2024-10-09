@@ -4,5 +4,9 @@ channels:
 dependencies:
   - networkx
   - pytest
-  - pylint
   - matplotlib
+  - pip
+  - pip :
+      - pytest
+      - pytest-cov
+      - pylint

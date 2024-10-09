@@ -253,7 +253,8 @@ def get_starting_nodes(graph: DiGraph) -> List[str]:
     :param graph: (nx.DiGraph) A directed graph object
     :return: (list) A list of all nodes without predecessors
     """
-    pass
+    starting_nodes = [node for node in graph.nodes if not list(graph.predecessors(node))]
+    return starting_nodes
 
 
 def get_sink_nodes(graph: DiGraph) -> List[str]:
@@ -262,7 +263,8 @@ def get_sink_nodes(graph: DiGraph) -> List[str]:
     :param graph: (nx.DiGraph) A directed graph object
     :return: (list) A list of all nodes without successors
     """
-    pass
+    sink_nodes = [node for node in graph.nodes if not list(graph.successors(node))]
+    return sink_nodes
 
 
 def get_contigs(
@@ -275,7 +277,19 @@ def get_contigs(
     :param ending_nodes: (list) A list of nodes without successors
     :return: (list) List of [contiguous sequence and their length]
     """
-    pass
+    contigs = []
+    for start_node in starting_nodes:
+        for end_node in ending_nodes:
+            # Vérifier s'il existe un chemin entre le nœud de départ et le nœud de fin
+            if nx.has_path(graph, start_node, end_node):
+                # Utiliser les successeurs pour générer tous les chemins
+                for path in nx.all_simple_paths(graph, start_node, end_node):
+                    # Construire la séquence contiguë
+                    contig = path[0]  # Commencer avec le premier k-1-mer
+                    for node in path[1:]:
+                        contig += node[-1]  # Ajouter le dernier nucléotide de chaque nœud suivant
+                    contigs.append((contig, len(contig)))  # Ajouter le contig et sa longueur
+    return contigs
 
 
 def save_contigs(contigs_list: List[str], output_file: Path) -> None:
@@ -284,7 +298,12 @@ def save_contigs(contigs_list: List[str], output_file: Path) -> None:
     :param contig_list: (list) List of [contiguous sequence and their length]
     :param output_file: (Path) Path to the output file
     """
-    pass
+    with open(output_file, "w") as file:
+        for i, (contig, length) in enumerate(contigs_list):
+            # Écrire l'en-tête du contig au format FASTA
+            file.write(f">contig_{i} len={length}\n")
+            # Écrire la séquence du contig en lignes de 80 caractères maximum
+            file.write("\n".join(textwrap.wrap(contig, width=80)) + "\n")
 
 
 def draw_graph(graph: DiGraph, graphimg_file: Path) -> None:  # pragma: no cover
