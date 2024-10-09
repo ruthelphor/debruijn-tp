@@ -171,21 +171,7 @@ def remove_paths(
     :param delete_sink_node: (boolean) True->We remove the last node of a path
     :return: (nx.DiGraph) A directed graph object
     """
-    for path in path_list:
-        # Supprimer les nœuds intermédiaires
-        nodes_to_remove = path[:]
-        
-        # ne pas supprimer le nœud d'entrée
-        if not delete_entry_node:
-            nodes_to_remove = nodes_to_remove[1:]
-        
-        if not delete_sink_node:
-            nodes_to_remove = nodes_to_remove[:-1]
-        
-        # Supprimer les nœuds du graphe
-        graph.remove_nodes_from(nodes_to_remove)
-        
-    return graph
+    pass
 
 
 def select_best_path(
@@ -206,16 +192,7 @@ def select_best_path(
     :param delete_sink_node: (boolean) True->We remove the last node of a path
     :return: (nx.DiGraph) A directed graph object
     """
-    # Trouver l'indice du chemin ayant la longueur la plus grande et le poids moyen le plus élevé
-    max_length_index = max(range(len(path_list)), key=lambda i: (path_length[i], weight_avg_list[i]))
-    
-    # Sélectionner tous les autres chemins à supprimer sauf le meilleur
-    paths_to_remove = [path_list[i] for i in range(len(path_list)) if i != max_length_index]
-    
-    # Supprimer les chemins non choisis
-    graph = remove_paths(graph, paths_to_remove, delete_entry_node, delete_sink_node)
-    
-    return graph
+    pass
 
 
 def path_average_weight(graph: DiGraph, path: List[str]) -> float:
