@@ -436,19 +436,69 @@ def draw_graph(graph: DiGraph, graphimg_file: Path) -> None:  # pragma: no cover
 # ==============================================================
 # Main program
 # ==============================================================
+
 def main() -> None:  # pragma: no cover
     """
-    Main program function
+    Fonction principale du programme
     """
-    # Get arguments
+    # Récupérer les arguments
     args = get_arguments()
+    print("Lecture des arguments...")
 
-    # Fonctions de dessin du graphe
-    # A decommenter si vous souhaitez visualiser un petit
-    # graphe
-    # Plot the graph
-    # if args.graphimg_file:
-    #     draw_graph(graph, args.graphimg_file)
+    # Construire le dictionnaire de k-mers à partir du fichier FASTQ
+    print("Construction du dictionnaire de k-mers...")
+    kmer_dict = build_kmer_dict(args.fastq_file, args.kmer_size)
+
+    # Construire le graphe de De Bruijn
+    print("Construction du graphe de De Bruijn...")
+    graph = build_graph(kmer_dict)
+
+    # Obtenir les nœuds de départ et de fin
+    print("Identification des nœuds de départ et de fin...")
+    start_nodes = get_starting_nodes(graph)
+    end_nodes = get_sink_nodes(graph)
+
+    # Simplifier les bulles dans le graphe
+    print("Simplification des bulles...")
+    graph = simplify_bubbles(graph)
+
+    # Mettre à jour les nœuds de départ et de fin après la résolution des bulles
+    print("Mise à jour des nœuds après la simplification des bulles...")
+    start_nodes = get_starting_nodes(graph)
+    end_nodes = get_sink_nodes(graph)
+
+    # Résoudre les pointes d'entrée
+    print("Résolution des pointes d'entrée...")
+    graph = solve_entry_tips(graph, start_nodes)
+
+    # Mettre à jour les nœuds de départ et de fin après la résolution des pointes d'entrée
+    print("Mise à jour des nœuds après la résolution des pointes d'entrée...")
+    start_nodes = get_starting_nodes(graph)
+    end_nodes = get_sink_nodes(graph)
+
+    # Résoudre les pointes de sortie
+    print("Résolution des pointes de sortie...")
+    graph = solve_out_tips(graph, end_nodes)
+
+    # Mettre à jour les nœuds de départ et de fin après la résolution des pointes de sortie
+    print("Mise à jour des nœuds après la résolution des pointes de sortie...")
+    start_nodes = get_starting_nodes(graph)
+    end_nodes = get_sink_nodes(graph)
+
+    # Extraire les contigs à partir du graphe
+    print("Extraction des contigs du graphe...")
+    contigs = get_contigs(graph, start_nodes, end_nodes)
+
+    # Sauvegarder les contigs dans le fichier de sortie
+    print(f"Sauvegarde des contigs dans le fichier {args.output_file}...")
+    save_contigs(contigs, args.output_file)
+
+    # Optionnellement, dessiner le graphe si l'utilisateur a spécifié un fichier d'image de sortie
+    if args.graphimg_file:
+        print(f"Dessin du graphe et sauvegarde dans le fichier {args.graphimg_file}...")
+        draw_graph(graph, args.graphimg_file)
+
+    print("Traitement terminé.")
 
 
 if __name__ == "__main__":  # pragma: no cover
