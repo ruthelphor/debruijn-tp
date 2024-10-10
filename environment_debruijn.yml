@@ -3,7 +3,6 @@ channels:
   - conda-forge
 dependencies:
   - networkx
-  - pytest
   - matplotlib
   - pip
   - pip :
